@@ -15,6 +15,14 @@ provider:
   environment:
     TODOS_TABLE: TODOS-${self:provider.stage}
     INDEX_NAME: UserIdIndex
+    IMAGES_S3_BUCKET: "it.jaschke.todo.${self:provider.stage}"
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
 
 functions:
 
@@ -47,16 +55,19 @@ functions:
           path: todos
           cors: true
 
-  # TODO: Configure this function
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:UpdateItem
+        Resource: 'arn:aws:dynamodb:us-east-1:*:*'
     events:
       - http:
-          method: patch
+          method: put
           path: todos/{todoId}
           cors: true
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     iamRoleStatements:
@@ -70,7 +81,6 @@ functions:
           path: todos/{todoId}
           cors: true
 
-  # TODO: Configure this function
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
@@ -81,6 +91,22 @@ functions:
 
 resources:
   Resources:
+    ImageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - PUT
+                - POST
+                - GET
+              MaxAge: 3000
+
     TodosTable:
       Type: AWS::DynamoDB::Table
       Properties:
