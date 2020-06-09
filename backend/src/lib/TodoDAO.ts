@@ -1,10 +1,13 @@
 import * as AWS from "aws-sdk";
+import * as AWSXRay from 'aws-xray-sdk'
+
 import {Todo} from "../../../client/src/types/Todo";
 import * as uuid from "uuid";
 import {CreateTodoRequest} from "../requests/CreateTodoRequest";
 import {UpdateTodoRequest} from "../requests/UpdateTodoRequest";
 
-const docClient = new AWS.DynamoDB.DocumentClient();
+const XAWS = AWSXRay.captureAWS(AWS);
+const docClient =  XAWS.DynamoDB.DocumentClient();
 const todoTable = process.env.TODOS_TABLE;
 const indexName = process.env.INDEX_NAME;
 

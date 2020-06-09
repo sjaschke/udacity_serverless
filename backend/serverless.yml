@@ -12,6 +12,10 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
+  tracing:
+    lambda: true
+    apiGateway: true
+
   environment:
     TODOS_TABLE: TODOS-${self:provider.stage}
     INDEX_NAME: UserIdIndex
@@ -36,6 +40,11 @@ functions:
         Action:
           - dynamodb:Query
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: get
@@ -49,6 +58,11 @@ functions:
         Action:
           - dynamodb:PutItem
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: post
@@ -62,6 +76,11 @@ functions:
         Action:
           - dynamodb:UpdateItem
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: put
@@ -73,8 +92,13 @@ functions:
     iamRoleStatements:
       - Effect: "Allow"
         Action:
-          - dynamodb:DeleteItem
+          - xray:PutTraceSegments
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: delete
