@@ -4,6 +4,8 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
 
 provider:
   name: aws
@@ -11,6 +13,10 @@ provider:
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
+
+  tracing:
+    lambda: true
+    apiGateway: true
 
   environment:
     TODOS_TABLE: TODOS-${self:provider.stage}
@@ -24,8 +30,17 @@ provider:
         - s3:GetObject
       Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
 
+custom:
+  documentation:
+    api:
+      info:
+        version: '1.0.0'
+        title: 'ToDo API'
+    models:
+      - name: UpdateTodoRequest
+        contentType: application/json
+        schema: ${file(src/models/update-todo-request.json)}
 functions:
-
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
@@ -36,6 +51,11 @@ functions:
         Action:
           - dynamodb:Query
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: get
@@ -49,6 +69,11 @@ functions:
         Action:
           - dynamodb:PutItem
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: post
@@ -62,19 +87,35 @@ functions:
         Action:
           - dynamodb:UpdateItem
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: put
           path: todos/{todoId}
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: update a todo
+            description: update a todo
+            requestModels:
+              'application/json': UpdateTodoRequest
 
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     iamRoleStatements:
       - Effect: "Allow"
         Action:
-          - dynamodb:DeleteItem
+          - xray:PutTraceSegments
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: delete
@@ -91,6 +132,16 @@ functions:
 
 resources:
   Resources:
+
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
     ImageBucket:
       Type: AWS::S3::Bucket
       Properties:

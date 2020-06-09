@@ -1,24 +1,35 @@
-import * as AWS from "aws-sdk";
+import * as AWS  from 'aws-sdk'
+const AWSXRay = require('aws-xray-sdk');
+import { DocumentClient } from 'aws-sdk/clients/dynamodb'
+
+const XAWS = AWSXRay.captureAWS(AWS);
+const docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient();
+
 import {Todo} from "../../../client/src/types/Todo";
 import * as uuid from "uuid";
 import {CreateTodoRequest} from "../requests/CreateTodoRequest";
 import {UpdateTodoRequest} from "../requests/UpdateTodoRequest";
 
-const docClient = new AWS.DynamoDB.DocumentClient();
 const todoTable = process.env.TODOS_TABLE;
 const indexName = process.env.INDEX_NAME;
+
+import { createLogger } from '../utils/logger'
+const logger = createLogger('dynamoDB')
 
 export async function getUsersTodos(userId: string): Promise<Todo[]> {
     const result = await docClient.query({
         TableName: todoTable,
-        KeyConditionExpression: 'userId = :userId',
+        KeyConditionExpression: '#userId = :userId',
+        ExpressionAttributeNames: {
+            "#userId": "userId"
+        },
         ExpressionAttributeValues: {
             ':userId': userId
         },
         IndexName: indexName,
         ScanIndexForward: false
     }).promise()
-
+    logger.info('getUsersTodos itmes:' + result.Items.length);
     return result.Items as Todo[];
 }
 
@@ -52,7 +63,7 @@ export async function createTodo(todoRequest: CreateTodoRequest, userId: string)
     return item as Todo;
 }
 
-export async function updateTodo(todoId: string, updatedTodo: UpdateTodoRequest, userId: string) : Promise<Todo>{
+export async function updateTodo(todoId: string, updatedTodo: UpdateTodoRequest, userId: string): Promise<Todo> {
     const params = {
         TableName: todoTable,
         Key: {
@@ -60,7 +71,7 @@ export async function updateTodo(todoId: string, updatedTodo: UpdateTodoRequest,
             "todoId": todoId
         },
         UpdateExpression: "set #name = :name, #dueDate = :dueDate, #done = :done",
-        ExpressionAttributeNames:{
+        ExpressionAttributeNames: {
             "#name": "name",
             "#dueDate": "dueDate",
             "#done": "done"
@@ -70,7 +81,7 @@ export async function updateTodo(todoId: string, updatedTodo: UpdateTodoRequest,
             ":dueDate": updatedTodo.dueDate,
             ":done": updatedTodo.done
         },
-        ReturnValues:"ALL_NEW"
+        ReturnValues: "ALL_NEW"
     };
     const result = await docClient.update(params).promise();
     return result.Attributes as Todo;
