@@ -23,13 +23,6 @@ provider:
     INDEX_NAME: UserIdIndex
     IMAGES_S3_BUCKET: "it.jaschke.todo.${self:provider.stage}"
 
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:GetObject
-      Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
-
 custom:
   documentation:
     api:
@@ -109,7 +102,7 @@ functions:
     iamRoleStatements:
       - Effect: "Allow"
         Action:
-          - xray:PutTraceSegments
+          - dynamodb:DeleteItem
         Resource: 'arn:aws:dynamodb:us-east-1:*:*'
       - Effect: "Allow"
         Action:
@@ -124,6 +117,21 @@ functions:
 
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:UpdateItem
+        Resource: 'arn:aws:dynamodb:us-east-1:*:*'
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+      - Effect: "Allow"
+        Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+        Resource: '*'
     events:
       - http:
           method: post
