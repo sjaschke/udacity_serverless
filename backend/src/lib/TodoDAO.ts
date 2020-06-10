@@ -86,3 +86,25 @@ export async function updateTodo(todoId: string, updatedTodo: UpdateTodoRequest,
     const result = await docClient.update(params).promise();
     return result.Attributes as Todo;
 }
+
+export async function setAttachmentURL(todoId: string, userId: string, url: string) {
+    const params = {
+        TableName: todoTable,
+        Key: {
+            "userId": userId,
+            "todoId": todoId
+        },
+        UpdateExpression: "set #url = :url",
+        ExpressionAttributeNames: {
+            "#url": "attachmentUrl"
+        },
+        ExpressionAttributeValues: {
+            ":url": url
+        },
+        ReturnValues: "ALL_NEW"
+    };
+    console.info(params)
+    const result = await docClient.update(params).promise();
+    console.info(result)
+    return;
+}
